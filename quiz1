@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>YouTube Quiz Companion</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; padding: 1em; text-align: center; }
+    .hidden { display: none; }
+    button { padding: 1em 2em; font-size: 1.2em; margin: 1em; }
+    .option-btn { display: block; width: 80%; margin: 0.5em auto; }
+    #feedback { font-weight: bold; margin-top: 1em; }
+    #timer { font-size: 1.1em; margin-top: 0.5em; }
+    #completion-msg { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>YouTube Quiz Companion</h1>
+  <div id="start-screen">
+    <p>When you're ready, press "Start" at the same time you play the video!</p>
+    <p id="completion-msg"></p>
+    <button onclick="startQuiz()">Start</button>
+  </div>
+  <div id="quiz-screen" class="hidden">
+    <h2 id="question"></h2>
+    <div id="options"></div>
+    <div id="timer"></div>
+    <div id="feedback"></div>
+  </div>
+  <div id="end-screen" class="hidden">
+    <h2>Quiz Complete!</h2>
+    <p>Your score: <span id="score"></span></p>
+    <p id="prev-score"></p>
+  </div>
+  <script>
+    // === EDIT YOUR QUESTIONS AND TIMINGS BELOW ===
+    const questions = [
+      {
+        time: 0, // seconds from "Start" to show Q1
+        text: "What is the capital of France?",
+        options: ["Paris", "London", "Berlin", "Rome"],
+        correct: 0 // index of correct answer
+      },
+      {
+        time: 15, // show Q2 at 15 seconds
+        text: "Which planet is known as the Red Planet?",
+        options: ["Earth", "Mars", "Jupiter", "Venus"],
+        correct: 1
+      },
+      // Add more questions as needed...
+    ];
+
+    let currentQ = -1, userScore = 0, quizStart = 0, timers = [];
+    let answerSelected = null;
+    let countdown = null;
+    // Track if they've already completed the quiz
+    let alreadyCompleted = localStorage.getItem('quizCompleted') === 'true';
+
+    // On page load, show message if already completed
+    window.onload = function() {
+      if (alreadyCompleted) {
+        document.getElementById("completion-msg").innerText = 
+          "You have already completed this quiz. New attempts won't be recorded, but you can still play!";
+      }
+    };
+
+    function startQuiz() {
+      document.getElementById("start-screen").classList.add("hidden");
+      document.getElementById("quiz-screen").classList.remove("hidden");
+      quizStart = Date.now();
+      userScore = 0; // Reset score each play
+      scheduleQuestions();
+    }
+
+    function scheduleQuestions() {
+      questions.forEach((q, i) => {
+        const t = setTimeout(() => showQuestion(i), q.time * 1000);
+        timers.push(t);
+      });
+      // End screen: show after last question + 10 sec
+      const endTime = questions[questions.length-1].time + 10;
+      const endT = setTimeout(showEnd, endTime * 1000);
+      timers.push(endT);
+    }
+
+    function showQuestion(i) {
+      currentQ = i;
+      answerSelected = null;
+      document.getElementById("feedback").innerText = "";
+      document.getElementById("timer").innerText = "Time left: 10 seconds";
+      const q = questions[i];
+      document.getElementById("question").innerText = q.text;
+      const optsDiv = document.getElementById("options");
+      optsDiv.innerHTML = "";
+      q.options.forEach((opt, idx) => {
+        const btn = document.createElement("button");
+        btn.innerText = opt;
+        btn.className = "option-btn";
+        btn.onclick = () => selectAnswer(idx);
+        optsDiv.appendChild(btn);
+      });
+      // Countdown timer
+      let timeLeft = 10;
+      if (countdown) clearInterval(countdown);
+      countdown = setInterval(() => {
+        timeLeft--;
+        document.getElementById("timer").innerText = "Time left: " + timeLeft + " seconds";
+        if (timeLeft <= 0) clearInterval(countdown);
+      }, 1000);
+
+      // After 10 seconds, disable buttons and show feedback
+      setTimeout(() => {
+        Array.from(document.getElementsByClassName("option-btn")).forEach(b => b.disabled = true);
+        giveFeedback();
+        document.getElementById("timer").innerText = "";
+      }, 10000);
+    }
+
+    function selectAnswer(idx) {
+      answerSelected = idx;
+      Array.from(document.getElementsByClassName("option-btn")).forEach(b => b.disabled = true);
+      // Feedback is delayed until timer ends
+    }
+
+    function giveFeedback() {
+      const q = questions[currentQ];
+      if (answerSelected === q.correct) {
+        document.getElementById("feedback").innerText = "Correct!";
+        userScore++;
+      } else if (answerSelected === null) {
+        document.getElementById("feedback").innerText = "Time's up! The correct answer was: " + q.options[q.correct];
+      } else {
+        document.getElementById("feedback").innerText = "Incorrect! The correct answer was: " + q.options[q.correct];
+      }
+    }
+
+    function showEnd() {
+      document.getElementById("quiz-screen").classList.add("hidden");
+      document.getElementById("end-screen").classList.remove("hidden");
+      document.getElementById("score").innerText = userScore + " / " + questions.length;
+
+      let msg = "";
+      if (!alreadyCompleted) {
+        // First attempt, record the score and flag
+        localStorage.setItem('quizScore', userScore);
+        localStorage.setItem('quizCompleted', 'true');
+        msg = "This was your first attempt. Your score has been recorded.";
+        alreadyCompleted = true;
+      } else {
+        // Not first attempt, don't overwrite
+        let prev = localStorage.getItem('quizScore');
+        msg = "You have already completed this quiz. Your original score was: " + prev + " / " + questions.length + ". New scores are not recorded.";
+      }
+      document.getElementById("prev-score").innerText = msg;
+    }
+  </script>
+</body>
+</html>
