@@ -10,12 +10,14 @@
     .option-btn { display: block; width: 80%; margin: 0.5em auto; }
     #feedback { font-weight: bold; margin-top: 1em; }
     #timer { font-size: 1.1em; margin-top: 0.5em; }
+    #completion-msg { color: red; font-weight: bold; }
   </style>
 </head>
 <body>
   <h1>YouTube Quiz Companion</h1>
   <div id="start-screen">
     <p>When you're ready, press "Start" at the same time you play the video!</p>
+    <p id="completion-msg"></p>
     <button onclick="startQuiz()">Start</button>
   </div>
   <div id="quiz-screen" class="hidden">
@@ -27,9 +29,10 @@
   <div id="end-screen" class="hidden">
     <h2>Quiz Complete!</h2>
     <p>Your score: <span id="score"></span></p>
+    <p id="prev-score"></p>
   </div>
   <script>
-    // Edit your questions and timings here:
+    // === EDIT YOUR QUESTIONS AND TIMINGS BELOW ===
     const questions = [
       {
         time: 0, // seconds from "Start" to show Q1
@@ -49,11 +52,22 @@
     let currentQ = -1, userScore = 0, quizStart = 0, timers = [];
     let answerSelected = null;
     let countdown = null;
+    // Track if they've already completed the quiz
+    let alreadyCompleted = localStorage.getItem('quizCompleted') === 'true';
+
+    // On page load, show message if already completed
+    window.onload = function() {
+      if (alreadyCompleted) {
+        document.getElementById("completion-msg").innerText = 
+          "You have already completed this quiz. New attempts won't be recorded, but you can still play!";
+      }
+    };
 
     function startQuiz() {
       document.getElementById("start-screen").classList.add("hidden");
       document.getElementById("quiz-screen").classList.remove("hidden");
       quizStart = Date.now();
+      userScore = 0; // Reset score each play
       scheduleQuestions();
     }
 
@@ -123,6 +137,20 @@
       document.getElementById("quiz-screen").classList.add("hidden");
       document.getElementById("end-screen").classList.remove("hidden");
       document.getElementById("score").innerText = userScore + " / " + questions.length;
+
+      let msg = "";
+      if (!alreadyCompleted) {
+        // First attempt, record the score and flag
+        localStorage.setItem('quizScore', userScore);
+        localStorage.setItem('quizCompleted', 'true');
+        msg = "This was your first attempt. Your score has been recorded.";
+        alreadyCompleted = true;
+      } else {
+        // Not first attempt, don't overwrite
+        let prev = localStorage.getItem('quizScore');
+        msg = "You have already completed this quiz. Your original score was: " + prev + " / " + questions.length + ". New scores are not recorded.";
+      }
+      document.getElementById("prev-score").innerText = msg;
     }
   </script>
 </body>
